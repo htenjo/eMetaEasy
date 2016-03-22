@@ -9,6 +9,7 @@ import os
 import isbnlib
 
 
+# returns the directory path to process given by the user
 def get_directory_name():
     print "-> Get Directory Path..."
     directory_path = raw_input("Directory path: ")
@@ -35,6 +36,7 @@ def list_files(directory_path):
     return files
 
 
+# Returns the ISBN code in formatted way
 def get_default_isbn(isbn_list):
     for isbn in isbn_list:
         if isbnlib.is_isbn13(isbn) or isbnlib.is_isbn10(isbn):
@@ -43,10 +45,9 @@ def get_default_isbn(isbn_list):
     return ""
 
 
-#/Users/htenjo/eBooks
+# /Users/htenjo/eBooks
 def get_isbn_from_file(file_name, max_pdf_pages=5):
     print "-> Getting ISBN from PDF files..."
-    isbn_dic = {}
 
     # PDFMiner boilerplate
     rsrcmgr = PDFResourceManager()
@@ -72,6 +73,7 @@ def get_isbn_from_file(file_name, max_pdf_pages=5):
     return default_isbn
 
 
+# Assign the attribute metadata names required by Calibre and some other readers
 def clean_metatada(meta):
     filled_metadata = {}
 
@@ -87,6 +89,7 @@ def clean_metatada(meta):
     return filled_metadata
 
 
+# Add the metadata fields directly in the pdf file and in the file name
 def add_metadata(file_name, metadata, directory_name):
     title = metadata[TITLE_META_NAME];
     authors = metadata[AUTHOR_META_NAME];
@@ -106,15 +109,18 @@ def add_metadata(file_name, metadata, directory_name):
         merger.write(pdf_file_reference_updated)
 
     os.rename(file_name, processed_file_name);
+    print "File processed OK"
 
 
+# Gets the new path where old files going to be moved
 def get_new_file_name_from_old_path(file_name):
     file_name = "" + file_name
     last_slash_index = file_name.rfind("/")
-    new_file_name = file_name[:last_slash_index+1] + DEFAUL_PENDING_FOLDER + file_name[last_slash_index+1:]
+    new_file_name = file_name[:last_slash_index+1] + DEFAULT_PENDING_FOLDER + file_name[last_slash_index+1:]
     return new_file_name
 
 
+# Main function
 def set_ebook_metadata():
     print "::: PDF Metadata running... "
     # directory_name = get_directory_name()
@@ -144,7 +150,6 @@ def set_ebook_metadata():
             print "ERROR: File with errors ", file_name, err.__str__()
 
 
-
 TITLE_PROPERTY_NAME = "Title"
 TITLE_META_NAME = "/Title"
 AUTHOR_PROPERTY_NAME = "Authors"
@@ -154,6 +159,6 @@ ISBN_META_NAME = "/ISBN"
 FILE_DEFAULT_EXTENSION = ".pdf"
 DASH_SEPARATOR = " -- "
 DEFAULT_OLD_FOLDER = "old/"
-DEFAUL_PENDING_FOLDER = "Waiting4ManualCheck/"
-set_ebook_metadata()
+DEFAULT_PENDING_FOLDER = "Waiting4ManualCheck/"
 
+set_ebook_metadata()
