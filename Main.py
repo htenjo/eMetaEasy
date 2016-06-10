@@ -4,7 +4,9 @@ from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.converter import TextConverter
 from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
-from PyPDF2 import PdfFileMerger
+from PyPDF2 import PdfFileReader, PdfFileMerger
+
+from slugify import Slugify
 import os
 import isbnlib
 
@@ -46,7 +48,7 @@ def get_default_isbn(isbn_list):
 
 
 # /Users/htenjo/eBooks
-def get_isbn_from_file(file_name, max_pdf_pages=5):
+def get_isbn_from_file(file_name, max_pdf_pages=0):
     print "-> Getting ISBN from PDF files..."
 
     # PDFMiner boilerplate
@@ -59,10 +61,13 @@ def get_isbn_from_file(file_name, max_pdf_pages=5):
 
     # Extract text
     fp = file(file_name, 'rb')
+    num_pages = 1
 
     for page in PDFPage.get_pages(fp, maxpages=max_pdf_pages):
         interpreter.process_page(page)
+        num_pages += 1
 
+    print "Pages processed = " + str(num_pages)
     fp.close()
     # Get text from StringIO
     text = sio.getvalue()
@@ -91,32 +96,37 @@ def clean_metatada(meta):
 
 # Add the metadata fields directly in the pdf file and in the file name
 def add_metadata(file_name, metadata, directory_name):
-    title = metadata[TITLE_META_NAME];
-    authors = metadata[AUTHOR_META_NAME];
-    isbn = metadata[ISBN_META_NAME];
+    title = my_slugify(metadata[TITLE_META_NAME]);
+    authors = my_slugify(metadata[AUTHOR_META_NAME]);
+    isbn = my_slugify(metadata[ISBN_META_NAME]);
     new_file_name = directory_name + "processed/" + title
     processed_file_name = directory_name + DEFAULT_OLD_FOLDER + title + FILE_DEFAULT_EXTENSION
 
     print "-> Adding metadata to file... %s", new_file_name
     merger = PdfFileMerger()
-    with open(file_name, 'rb') as pdf_file_reference:
-        merger.append(pdf_file_reference)
+    print "ADD METADATA 0"
+    print "::: ", file_name
+    merger.merge(position=0, fileobj=PdfFileReader(file_name, "rb"))
 
+    print "ADD METADATA 1"
     merger.addMetadata(metadata)
-
+    print "ADD METADATA 2"
     with open(new_file_name + DASH_SEPARATOR + authors + DASH_SEPARATOR + isbn
                       + FILE_DEFAULT_EXTENSION, 'wb') as pdf_file_reference_updated:
         merger.write(pdf_file_reference_updated)
-
+    print "ADD METADATA 3"
     os.rename(file_name, processed_file_name);
     print "File processed OK"
 
 
 # Gets the new path where old files going to be moved
 def get_new_file_name_from_old_path(file_name):
-    file_name = "" + file_name
+    file_name = str(file_name)
     last_slash_index = file_name.rfind("/")
-    new_file_name = file_name[:last_slash_index+1] + DEFAULT_PENDING_FOLDER + file_name[last_slash_index+1:]
+    dir_path = file_name[:last_slash_index+1]
+    new_file_name = file_name[last_slash_index+1:]
+    new_file_name = my_slugify(new_file_name)
+    new_file_name = dir_path + DEFAULT_PENDING_FOLDER + new_file_name
     return new_file_name
 
 
@@ -130,8 +140,10 @@ def set_ebook_metadata():
     for file_name in files:
         try:
             print "::: Processing file %s ..." % file_name
-            isbn = get_isbn_from_file(file_name, 10)
+            isbn = get_isbn_from_file(file_name)
+            print "ISBN OK"
             metadata = isbnlib.meta(isbn)
+            print "METADATA OK"
 
             if metadata is None:
                 os.rename(file_name, get_new_file_name_from_old_path(file_name));
@@ -139,6 +151,7 @@ def set_ebook_metadata():
 
             metadata = clean_metatada(metadata)
             print metadata
+            print "METADATA CLEANED"
 
             if metadata.has_key(TITLE_META_NAME) and \
                     metadata.has_key(AUTHOR_META_NAME) and metadata.has_key(ISBN_META_NAME):
@@ -158,7 +171,14 @@ ISBN_PROPERTY_NAME = "ISBN"
 ISBN_META_NAME = "/ISBN"
 FILE_DEFAULT_EXTENSION = ".pdf"
 DASH_SEPARATOR = " -- "
+DEFAULT_SEPARATOR = " "
 DEFAULT_OLD_FOLDER = "old/"
 DEFAULT_PENDING_FOLDER = "Waiting4ManualCheck/"
 
+my_slugify = Slugify()
+my_slugify.separator = DEFAULT_SEPARATOR
+my_slugify.safe_chars = '-.'
+
 set_ebook_metadata()
+
+
